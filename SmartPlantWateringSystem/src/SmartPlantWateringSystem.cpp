@@ -17,10 +17,12 @@ void setup();
 void loop();
 void takeAndDisplayReadings();
 void drawText();
+void turnPumpOn();
 #line 10 "/Users/Layla2/Documents/IoT/SmartPlantWateringSystem-/SmartPlantWateringSystem/src/SmartPlantWateringSystem.ino"
 const int BMEADDRESS = 0x76;
 const int SCREENADDRESS = 0x3C;   //has an address not assigned
 const int OLEDRESET = D4;
+const int RELAYPIN = 11;
 byte i, count;
 int currentTime, lastTime;
 
@@ -34,6 +36,7 @@ Time.zone(-6);
 Particle.syncTime();   //for MDT
 
 pinMode(A3, INPUT);  //Pin for mositure reading
+pinMode(RELAYPIN, OUTPUT);
 
 display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  //apparently 0x3C is for the screen width and height, must go into library to alter this
 display.display();  
@@ -49,6 +52,7 @@ void loop() {
   if (currentTime - lastTime > 10000){
     display.clearDisplay();
     drawText();
+    turnPumpOn();
     takeAndDisplayReadings();
     lastTime = millis();
   }
@@ -84,4 +88,16 @@ void drawText(){
   display.setTextSize(1);  //change depending on what you're displaying
   display.setTextColor(WHITE);  //no other option
   display.setCursor(0,0);
+}
+void turnPumpOn(){  // turns pump on for a few seconds
+  //int currentTime = millis();
+  //int lastTime;
+  digitalWrite(RELAYPIN, HIGH);   // make this more functional later
+  delay(250);
+  digitalWrite(RELAYPIN, LOW);
+  //if (currentTime - lastTime > 250){   //built in timer to not overwater my plant
+    //lastTime = millis();
+  
+
+  //lastTime = millis()
 }
