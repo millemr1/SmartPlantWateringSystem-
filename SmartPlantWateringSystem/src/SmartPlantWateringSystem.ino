@@ -9,6 +9,7 @@
 #include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_BME280.h"
+#include "math.h"
 #include "credentials.h"
 
 TCPClient TheClient; 
@@ -18,6 +19,13 @@ Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_K
 
 Adafruit_MQTT_Subscribe mqttObjWaterManually = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/buttontopump");  
 Adafruit_MQTT_Publish mqttObjTempData = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/tempdataplant");
+Adafruit_MQTT_Publish mqttObjPressData = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/plantpressure");
+Adafruit_MQTT_Publish mqttObjHumidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/HumidityPlant");
+Adafruit_MQTT_Publish mqttObjMoisture = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/moisture-plant");
+Adafruit_MQTT_Publish mqttObjDust = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/moisture-plant");
+
+
+
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -26,6 +34,9 @@ const int BMEADDRESS = 0x76;
 const int SCREENADDRESS = 0x3C;   //has an address not assigned
 const int OLEDRESET = D4;
 const int RELAYPIN = 11;
+int DUSTPIN = D5;
+
+int currentTime, lastTime;
 byte i, count;
 bool pressed;
 
@@ -50,6 +61,8 @@ Particle.syncTime();   //for MDT
 
 pinMode(A3, INPUT);  //Pin for mositure reading
 pinMode(RELAYPIN, OUTPUT);
+pinMode(DUSTPIN, INPUT);
+
 
 display.begin(SSD1306_SWITCHCAPVCC, 0x3C);  //apparently 0x3C is for the screen width and height, must go into library to alter this
 display.display();  
@@ -70,53 +83,79 @@ void loop() {
     display.clearDisplay();
     drawText();
    // turnPumpOn();
-    takeAndDisplayReadings();
+    takeDisplayPublishEVData();
+    checkMoistureandWater();
+    takeandPublishDust();
     lastTime = millis(); 
   }
 }
-
-//void takeAndDisplayReadings(){   
-  
-int takeAndDisplaytemp(){
+void takeDisplayPublishEVData(){
+  float roomTempF;;
+  float pressureHG;
   float tempC;
-  float roomTempF;
-    tempC= bme.readTemperature();
-    roomTempF = (tempC*1.8)+32;
-    display.printf("Temp: %0.2f \n", roomTempF);
-    display.display();
-
-    return 
-    }  // take and convert temperature and pressure readings and display them on the screen
-  
-  //float tempC;
   float pressPA;
   float humidRH;
-  //float roomTempF;
-  float pressureHG;
-  int moisture;  //plant moisture
+  int analogMoisture;  //plant moisture
+  int moisturePercent;
   String DateTime = Time.timeStr();
   String TimeOnly = DateTime.substring(11,19);  //only want to display the time
 
   Serial.printf("before readings\n");
- //tempC= bme.readTemperature();
+ tempC= bme.readTemperature();
  pressPA = bme.readPressure();
- humidRH = bme.readHumidity();
  Serial.printf("humidity: %0.2f \n", humidRH);
- //roomTempF = (tempC*1.8)+32;  // convert to Celcius to Farenheit degrees
- pressureHG =  (pressPA)*(1/3386.39); //convert from Pascals to units of mercury
- moisture = analogRead(A3);
- Serial.printf("moisture: %i", moisture);
+ humidRH = bme.readHumidity();
+ roomTempF = (tempC*1.8)+32;  // convert to Celcius to Farenheit degrees
+ pressureHG =  (pressPA)*(1/3386.39) + 5; //convert from Pascals to units of mercury adding 5 to compensate for ABQ altitude
+ 
+  analogMoisture= analogRead(A3);
+  moisturePercent = map(analogMoisture, 2700, 1500, 1, 100);
+ 
+ Serial.printf(" Analog moisture: %i \n Percent: %i \n", analogMoisture, moisturePercent );
  //display.clearDisplay();
  //Serial.printf("cleared");
  display.printf("Temp: %0.2f \nPressure: %0.2f \nHumidity: %0.2f \n" ,roomTempF, pressureHG,humidRH);
- display.printf("Moist:%i \nTime: %s" , moisture, TimeOnly.c_str());
+ display.printf("Moist: %i \nTime: %s" , moisturePercent, TimeOnly.c_str());
  display.display();
+  
+  if(mqtt.Update()) {
+      mqttObjTempData.publish(roomTempF);
+      mqttObjPressData.publish(pressureHG);
+      mqttObjHumidity.publish(humidRH);
+      mqttObjMoisture.publish(moisturePercent);
+      Serial.printf("Publishing Temp: %0.2f \nPressure: %0.2f \nHumidity: %0.2f \n", roomTempF, pressureHG,humidRH); 
+      Serial.printf(" Publishing: Analog moisture: %i \n Percent: %i \n", analogMoisture, moisturePercent);
+  }
 }
 void drawText(){
   Serial.printf("text should be displaying");
   display.setTextSize(1);  //change depending on what you're displaying
   display.setTextColor(WHITE);  //no other option
   display.setCursor(0,0);
+}
+void takeandPublishDust(){
+static unsigned long startTime;  //because it kept giving me warnings about comparisons 
+static unsigned long duration;
+unsigned long sampleTime = 30000;  //
+static int lowPulseOccupancy = 0;  // gotten from example code I am wondering why we start it at 0
+static float ratio;
+static float concentration;
+
+  duration = pulseIn(DUSTPIN, LOW); //waits for pin to go from high to low start timeing
+  Serial.printf("Duration: %i \n", duration);
+  lowPulseOccupancy = lowPulseOccupancy + duration; // duration from low to high + duration
+  
+  if((millis() - startTime) > sampleTime ){
+    ratio = lowPulseOccupancy/(sampleTime * 10.0); // gets the ratio of dust in air over 30 seconds and converts it into a percentage?
+    concentration = 1.1*pow(ratio, 3)-3.8*pow(ratio, 2)+(520*ratio)+0.62;
+    Serial.printf("LPO : %i \n ratio: %f \n concentration: %f \n", lowPulseOccupancy, ratio, concentration);
+    lowPulseOccupancy = 0;
+    startTime = millis ();
+  }
+  if(mqtt.Update()) {
+      mqttObjDust.publish(concentration);
+      Serial.printf("Publishing Concentration: %0.2f", concentration);
+  }
 }
 void turnPumpOn(){  // turns pump on for a few seconds
   digitalWrite(RELAYPIN, HIGH);   // make this more functional later
@@ -144,7 +183,6 @@ bool IsButtonOnDashPressed(){
      }
     return isButtonState;
 }
-
 // Function to connect and reconnect as necessary to the MQTT server.
 void MQTT_connect() {
   int8_t ret;
@@ -164,5 +202,15 @@ void MQTT_connect() {
   }
   Serial.printf("MQTT Connected!\n");
 }
+void checkMoistureandWater(){
+  int analogMoisture = analogRead(A3);  //plant moisture A3 is the Pin
+  int moisturePercent;
+  moisturePercent = map(analogMoisture, 2700, 1500, 1, 100);
+  if (moisturePercent < 15){
+    turnPumpOn();
+    Serial.printf("Watering Plant");
+  }
+}
+
 
 
