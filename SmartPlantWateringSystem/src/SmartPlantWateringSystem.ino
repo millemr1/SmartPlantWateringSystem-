@@ -17,6 +17,7 @@ TCPClient TheClient;
 Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY); 
 
 Adafruit_MQTT_Subscribe mqttObjWaterManually = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/buttontopump");  
+Adafruit_MQTT_Publish mqttObjTempData = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/tempdataplant");
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -26,7 +27,6 @@ const int SCREENADDRESS = 0x3C;   //has an address not assigned
 const int OLEDRESET = D4;
 const int RELAYPIN = 11;
 byte i, count;
-int currentTime, lastTime;
 bool pressed;
 
 Adafruit_BME280 bme;   //declare temperature sensor 
@@ -75,22 +75,34 @@ void loop() {
   }
 }
 
-void takeAndDisplayReadings(){     // take and convert temperature and pressure readings and display them on the screen
+//void takeAndDisplayReadings(){   
+  
+int takeAndDisplaytemp(){
   float tempC;
+  float roomTempF;
+    tempC= bme.readTemperature();
+    roomTempF = (tempC*1.8)+32;
+    display.printf("Temp: %0.2f \n", roomTempF);
+    display.display();
+
+    return 
+    }  // take and convert temperature and pressure readings and display them on the screen
+  
+  //float tempC;
   float pressPA;
   float humidRH;
-  float roomTempF;
+  //float roomTempF;
   float pressureHG;
   int moisture;  //plant moisture
   String DateTime = Time.timeStr();
   String TimeOnly = DateTime.substring(11,19);  //only want to display the time
 
   Serial.printf("before readings\n");
- tempC= bme.readTemperature();
+ //tempC= bme.readTemperature();
  pressPA = bme.readPressure();
  humidRH = bme.readHumidity();
  Serial.printf("humidity: %0.2f \n", humidRH);
- roomTempF = (tempC*1.8)+32;  // convert to Celcius to Farenheit degrees
+ //roomTempF = (tempC*1.8)+32;  // convert to Celcius to Farenheit degrees
  pressureHG =  (pressPA)*(1/3386.39); //convert from Pascals to units of mercury
  moisture = analogRead(A3);
  Serial.printf("moisture: %i", moisture);
@@ -107,16 +119,9 @@ void drawText(){
   display.setCursor(0,0);
 }
 void turnPumpOn(){  // turns pump on for a few seconds
-  //int currentTime = millis();
-  //int lastTime;
   digitalWrite(RELAYPIN, HIGH);   // make this more functional later
   delay(250);
   digitalWrite(RELAYPIN, LOW);
-  //if (currentTime - lastTime > 250){   //built in timer to not overwater my plant
-    //lastTime = millis();
-  
-
-  //lastTime = millis()
 }
  
 bool IsButtonOnDashPressed(){
@@ -159,4 +164,5 @@ void MQTT_connect() {
   }
   Serial.printf("MQTT Connected!\n");
 }
+
 
