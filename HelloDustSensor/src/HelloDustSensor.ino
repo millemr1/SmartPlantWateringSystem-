@@ -19,7 +19,6 @@ void setup() {
   Serial.begin(9600);
   pinMode(DUSTPIN, INPUT);
   startTime =  millis();
-
 }
 void loop() { 
   duration = pulseIn(DUSTPIN, LOW); //waits for pin to go from high to low start timeing
