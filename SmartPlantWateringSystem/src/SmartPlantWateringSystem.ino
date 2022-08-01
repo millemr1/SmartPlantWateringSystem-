@@ -4,8 +4,21 @@
  * Author: Micalah Miller
  * Date: 07/29/2022
  */
+#include "Adafruit_MQTT.h"
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_BME280.h"
+#include "credentials.h"
+
+TCPClient TheClient; 
+
+Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY); 
+
+Adafruit_MQTT_Subscribe mqttObjWaterManually = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/ButtontoPump");  
+
+SYSTEM_MODE(SEMI_AUTOMATIC);
+
+//should I make this a function?
+
 
 const int BMEADDRESS = 0x76;
 const int SCREENADDRESS = 0x3C;   //has an address not assigned
@@ -19,6 +32,16 @@ Adafruit_SSD1306 display(OLEDRESET);   //declare OLED
 
 
 void setup() {
+
+Serial.begin(9600);
+  waitFor(Serial.isConnected, 15000); 
+
+ //Connect to WiFi without going to Particle Cloud
+  WiFi.connect();
+  while(WiFi.connecting()) {
+    Serial.printf(".");
+  }
+mqtt.subscribe(&mqttObjWaterManually);
 
 Time.zone(-6);
 Particle.syncTime();   //for MDT
@@ -43,6 +66,8 @@ void loop() {
     turnPumpOn();
     takeAndDisplayReadings();
     lastTime = millis();
+
+    turnPumpOnManually();
   }
 }
 
@@ -89,3 +114,40 @@ void turnPumpOn(){  // turns pump on for a few seconds
 
   //lastTime = millis()
 }
+ 
+void turnPumpOnManually(){
+  int buttonState;
+   Adafruit_MQTT_Subscribe * subscription;
+  while(subscription = mqtt.readSubsciption(1000)){
+    if(subscription == &mqttObjWaterManually){
+      buttonState = atof((char *)mqttObjWaterManually.lastread);
+      Serial.printf("Received %0.2f from Adafruit.io feed /ButtontoPump \n", buttonState);      
+    }
+  }
+
+}
+
+
+
+
+
+// Function to connect and reconnect as necessary to the MQTT server.
+void MQTT_connect() {
+  int8_t ret;
+ 
+  // Stop if already connected.
+  if (mqtt.connected()) {
+    return;
+  }
+ 
+  Serial.print("Connecting to MQTT... ");
+ 
+  while ((ret = mqtt.connect()) != 0) { // connect will return 0 for connected
+       Serial.printf("%s\n",(char *)mqtt.connectErrorString(ret));
+       Serial.printf("Retrying MQTT connection in 5 seconds..\n");
+       mqtt.disconnect();
+       delay(5000);  // wait 5 seconds
+  }
+  Serial.printf("MQTT Connected!\n");
+}
+
