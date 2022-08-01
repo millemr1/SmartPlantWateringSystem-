@@ -32,11 +32,12 @@ void setup() {
 }
 void loop() { 
   duration = pulseIn(DUSTPIN, LOW); //waits for pin to go from high to low start timeing
+  Serial.printf("Duration: %i \n", duration);
   lowPulseOccupancy = lowPulseOccupancy + duration; // duration from low to high + duration
   
   if((millis() - startTime) > sampleTime ){
     ratio = lowPulseOccupancy/(sampleTime * 10.0); // gets the ratio of dust in air over 30 seconds and converts it into a percentage?
-    concentration = 1.1*pow(ratio, 3)-3.8*pow(ratio, 2)+520*ratio+0.62;
+    concentration = 1.1*pow(ratio, 3)-3.8*pow(ratio, 2)+(520*ratio)+0.62;
     Serial.printf("LPO : %i \n ratio: %f \n concentration: %f \n", lowPulseOccupancy, ratio, concentration);
     lowPulseOccupancy = 0;
     startTime = millis ();

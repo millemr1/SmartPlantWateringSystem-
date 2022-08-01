@@ -124,12 +124,7 @@ void turnPumpOnManually(){
       Serial.printf("Received %0.2f from Adafruit.io feed /ButtontoPump \n", buttonState);      
     }
   }
-
 }
-
-
-
-
 
 // Function to connect and reconnect as necessary to the MQTT server.
 void MQTT_connect() {

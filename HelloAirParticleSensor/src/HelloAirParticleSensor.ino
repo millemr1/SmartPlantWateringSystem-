@@ -33,5 +33,18 @@ void loop() {
 
   if(currentQuality >= 0){  //something valid
     Serial.printf("Air Quality READING: %i \n" , currentQuality);
+    if(currentQuality == 0){
+      Serial.printf(" VERY High Pollution\n");
+    }
+    if(currentQuality == 1){
+      Serial.printf("High Pollution\n");
+    }
+    if(currentQuality == 2){
+      Serial.printf("Low Pollution\n");
+    }
+    if(currentQuality == 3){
+      Serial.printf("Fresh Air\n");
+    }
   }
+  delay(500);
 }
