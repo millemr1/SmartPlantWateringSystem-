@@ -27,6 +27,7 @@ const int OLEDRESET = D4;
 const int RELAYPIN = 11;
 byte i, count;
 int currentTime, lastTime;
+bool pressed;
 
 Adafruit_BME280 bme;   //declare temperature sensor 
 Adafruit_SSD1306 display(OLEDRESET);   //declare OLED
@@ -59,9 +60,9 @@ bme.begin(0x76);  //initiazlie temp, pressure, and humidity sensor
 
 void loop() {
   MQTT_connect();
-  IsButtonOnDashPressed(); //check if button is pressed from the dashboard
-  if(IsButtonOnDashPressed()){
-    Serial.print("Pump is on")
+  pressed = IsButtonOnDashPressed(); //check if button is pressed from the dashboard
+  if(pressed){
+    Serial.print("Pump is on");
     turnPumpOn();
   }
   currentTime =  millis();
@@ -122,7 +123,7 @@ bool IsButtonOnDashPressed(){
   float buttonState;
   bool isButtonState;
    Adafruit_MQTT_Subscribe * subscription;
-  while(subscription = mqtt.readSubscription(1000)){
+  while(subscription = mqtt.readSubscription(200)){
     if(subscription == &mqttObjWaterManually){
       buttonState = atof((char *)mqttObjWaterManually.lastread);
       Serial.printf("Received %0.2f from Adafruit.io feed /ButtontoPump \n", buttonState);     
