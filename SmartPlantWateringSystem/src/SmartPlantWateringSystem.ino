@@ -16,7 +16,7 @@ TCPClient TheClient;
 // Setup the MQTT client class by passing in the WiFi client and MQTT server and login details. 
 Adafruit_MQTT_SPARK mqtt(&TheClient,AIO_SERVER,AIO_SERVERPORT,AIO_USERNAME,AIO_KEY); 
 
-Adafruit_MQTT_Subscribe mqttObjWaterManually = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/ButtontoPump");  
+Adafruit_MQTT_Subscribe mqttObjWaterManually = Adafruit_MQTT_Subscribe(&mqtt, AIO_USERNAME "/feeds/buttontopump");  
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -58,16 +58,19 @@ bme.begin(0x76);  //initiazlie temp, pressure, and humidity sensor
 }
 
 void loop() {
-  IsButtonOnDashPressed();
+  MQTT_connect();
+  IsButtonOnDashPressed(); //check if button is pressed from the dashboard
+  if(IsButtonOnDashPressed()){
+    Serial.print("Pump is on")
+    turnPumpOn();
+  }
   currentTime =  millis();
   if (currentTime - lastTime > 10000){
     display.clearDisplay();
     drawText();
    // turnPumpOn();
     takeAndDisplayReadings();
-    lastTime = millis();
-
-   
+    lastTime = millis(); 
   }
 }
 
@@ -128,12 +131,10 @@ bool IsButtonOnDashPressed(){
     if(buttonState == 1.00){
       isButtonState = true;
       Serial.printf("button is on \n");
-      delay(500);
     }
     else if (buttonState == 0.00){
       isButtonState = false;
        Serial.printf("button is off \n");
-       delay(500);
      }
     return isButtonState;
 }
