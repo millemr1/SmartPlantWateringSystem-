@@ -9,7 +9,7 @@
 #include "Adafruit_MQTT/Adafruit_MQTT_SPARK.h"
 #include "Adafruit_SSD1306.h"
 #include "Adafruit_BME280.h"
-#include "math.h"
+#include <math.h>
 #include "credentials.h"
 
 TCPClient TheClient; 
@@ -22,10 +22,7 @@ Adafruit_MQTT_Publish mqttObjTempData = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAM
 Adafruit_MQTT_Publish mqttObjPressData = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/plantpressure");
 Adafruit_MQTT_Publish mqttObjHumidity = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/HumidityPlant");
 Adafruit_MQTT_Publish mqttObjMoisture = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/moisture-plant");
-Adafruit_MQTT_Publish mqttObjDust = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/moisture-plant");
-
-
-
+Adafruit_MQTT_Publish mqttObjDust = Adafruit_MQTT_Publish(&mqtt, AIO_USERNAME "/feeds/dustplant");
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 
@@ -128,16 +125,16 @@ void takeDisplayPublishEVData(){
   }
 }
 void drawText(){
-  Serial.printf("text should be displaying");
+  Serial.printf("text should be displaying on OLED \n");
   display.setTextSize(1);  //change depending on what you're displaying
   display.setTextColor(WHITE);  //no other option
   display.setCursor(0,0);
 }
 void takeandPublishDust(){
 static unsigned long startTime;  //because it kept giving me warnings about comparisons 
-static unsigned long duration;
+unsigned long duration;
 unsigned long sampleTime = 30000;  //
-static int lowPulseOccupancy = 0;  // gotten from example code I am wondering why we start it at 0
+int lowPulseOccupancy = 0;  // gotten from example code I am wondering why we start it at 0
 static float ratio;
 static float concentration;
 
@@ -154,7 +151,7 @@ static float concentration;
   }
   if(mqtt.Update()) {
       mqttObjDust.publish(concentration);
-      Serial.printf("Publishing Concentration: %0.2f", concentration);
+      Serial.printf("Publishing Concentration: %0.2f \n", concentration);
   }
 }
 void turnPumpOn(){  // turns pump on for a few seconds
